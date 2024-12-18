@@ -1,9 +1,8 @@
-import 'dart:io' show Platform, exit;
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 
 import 'package:webview_flutter/webview_flutter.dart';
+import 'pull_to_refresh.dart';
 
 import 'package:kiosk_mode/kiosk_mode.dart';
 
@@ -25,14 +24,17 @@ class HomePageWeb extends StatefulWidget {
 }
 
 class _HomePageWebState extends State<HomePageWeb> {
-  final openPage = 'https://graphiert.blue/';
+  final openPage = 'http://192.168.0.201/cbt/';
+  // final openPage = "https://youtube.com/";
   late final Stream<KioskMode> currentMode = watchKioskMode();
   double progress = 0;
   late WebViewController webCtr;
+  late DragGesturePullToRefresh dragGesturePullToRefresh;
 
   @override
   void initState() {
     super.initState();
+    dragGesturePullToRefresh = DragGesturePullToRefresh();
     webCtr = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(const Color(0x00000000))
@@ -43,31 +45,37 @@ class _HomePageWebState extends State<HomePageWeb> {
               this.progress = progress / 100;
             });
           },
-          onPageStarted: (String url) {},
-          onPageFinished: (String url) {},
+          onPageStarted: (String url) {
+            dragGesturePullToRefresh.started();
+          },
+          onPageFinished: (String url) {
+            dragGesturePullToRefresh.finished();
+          },
           onHttpError: (HttpResponseError error) {
-            final errCode = error.response?.statusCode;
-            if (errCode == 404) webCtr.loadFlutterAsset("assets/404.html");
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text("HTTP error with code $errCode. Ignore this message if page works normally."),
-              duration: const Duration(seconds: 15),
-              action: SnackBarAction(
-              label: 'Dismiss',
-              onPressed: () =>
-                ScaffoldMessenger.of(context).hideCurrentSnackBar(),
-              )));
+            // final errCode = error.response?.statusCode;
+            // if (errCode == 404) webCtr.loadFlutterAsset("assets/404.html");
+            // ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            //     content: Text(
+            //         "HTTP error with code $errCode. Ignore this message if page works normally."),
+            //     duration: const Duration(seconds: 15),
+            //     action: SnackBarAction(
+            //       label: 'Dismiss',
+            //       onPressed: () =>
+            //           ScaffoldMessenger.of(context).hideCurrentSnackBar(),
+            //     )));
           },
           onWebResourceError: (WebResourceError error) {
-            webCtr.loadFlutterAsset("assets/404.html");
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text(error.description),
-              duration: const Duration(seconds: 15),
-              action: SnackBarAction(
-                label: "Dismiss",
-                onPressed: () =>
-                    ScaffoldMessenger.of(context).hideCurrentSnackBar(),
-              ),
-            ));
+            // webCtr.loadFlutterAsset("assets/404.html");
+            // ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            //  content: Text(error.description),
+            //  duration: const Duration(seconds: 15),
+            //  action: SnackBarAction(
+            //    label: "Dismiss",
+            //    onPressed: () =>
+            //        ScaffoldMessenger.of(context).hideCurrentSnackBar(),
+            //  ),
+            //));
+            dragGesturePullToRefresh.finished();
           },
           onNavigationRequest: (NavigationRequest request) {
             //  if (request.url.startsWith('https://www.youtube.com/')) {
@@ -81,6 +89,11 @@ class _HomePageWebState extends State<HomePageWeb> {
       ..loadRequest(Uri.parse(openPage));
     startKioskMode();
     FlutterWindowManager.addFlags(FlutterWindowManager.FLAG_SECURE);
+    dragGesturePullToRefresh
+        .setController(webCtr)
+        .setDragHeightEnd(200)
+        .setDragStartYDiff(10)
+        .setWaitToRestart(3000);
   }
 
   @override
@@ -92,10 +105,21 @@ class _HomePageWebState extends State<HomePageWeb> {
           if (mode == null || mode == KioskMode.disabled) {
             webCtr.clearCache();
             WebViewCookieManager().clearCookies();
-            return const Scaffold(
+            return Scaffold(
               body: Center(
-                child: Text(
-                    "Kiosk Mode disabled. Reopen the app, then try again."),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                        "Kiosk Mode disabled. Start again the Kiosk Mode to open."),
+                    const SizedBox(height: 10,),
+                    ElevatedButton(
+                        onPressed: () {
+                          startKioskMode();
+                        },
+                        child: const Text("Start Kiosk Mode"))
+                  ],
+                ),
               ),
             );
           }
@@ -124,39 +148,35 @@ class _HomePageWebState extends State<HomePageWeb> {
                                         await WebViewCookieManager()
                                             .clearCookies();
                                         await stopKioskMode();
-                                        Platform.isIOS
-                                            ? exit(0)
-                                            : SystemChannels.platform
-                                                .invokeMethod(
-                                                    'SystemNavigator.pop');
+                                        Navigator.pop(context);
                                       })
                                 ],
                               );
                             });
                       }),
-                  actions: [
-                    IconButton(
-                        icon: const Icon(Icons.arrow_back),
-                        onPressed: () async {
-                          if (await webCtr.canGoBack()) {
-                            await webCtr.goBack();
-                          }
-                        }),
-                    IconButton(
-                        icon: const Icon(Icons.refresh),
-                        onPressed: () async {
-                          await webCtr.currentUrl() == openPage
-                              ? await webCtr.reload()
-                              : await webCtr.loadRequest(Uri.parse(openPage));
-                        }),
-                    IconButton(
-                        icon: const Icon(Icons.arrow_forward),
-                        onPressed: () async {
-                          if (await webCtr.canGoForward()) {
-                            await webCtr.goForward();
-                          }
-                        })
-                  ],
+                  // actions: [
+                  //   IconButton(
+                  //       icon: const Icon(Icons.arrow_back),
+                  //       onPressed: () async {
+                  //         if (await webCtr.canGoBack()) {
+                  //           await webCtr.goBack();
+                  //         }
+                  //       }),
+                  //   IconButton(
+                  //       icon: const Icon(Icons.refresh),
+                  //       onPressed: () async {
+                  //         await webCtr.currentUrl() == openPage
+                  //             ? await webCtr.reload()
+                  //             : await webCtr.loadRequest(Uri.parse(openPage));
+                  //       }),
+                  //   IconButton(
+                  //       icon: const Icon(Icons.arrow_forward),
+                  //       onPressed: () async {
+                  //         if (await webCtr.canGoForward()) {
+                  //           await webCtr.goForward();
+                  //         }
+                  //       })
+                  // ],
                 ),
                 body: Column(children: [
                   LinearProgressIndicator(
@@ -165,16 +185,48 @@ class _HomePageWebState extends State<HomePageWeb> {
                     backgroundColor: Colors.grey,
                   ),
                   Expanded(
-                    child: WebViewWidget(
-                      controller: webCtr,
-                    ),
-                  )
+                      child: RefreshIndicator(
+                    onRefresh: dragGesturePullToRefresh.refresh,
+                    triggerMode: RefreshIndicatorTriggerMode.onEdge,
+                    child: Builder(builder: (context) {
+                      dragGesturePullToRefresh.setContext(context);
+                      return WebViewWidget(
+                          controller: webCtr,
+                          gestureRecognizers: {
+                            Factory(() => dragGesturePullToRefresh)
+                          });
+                    }),
+                  ))
                 ]),
               ),
               onPopInvoked: (didPop) async {
                 if (didPop) return;
                 if (await webCtr.canGoBack()) {
                   await webCtr.goBack();
+                } else {
+                  showDialog(
+                      // ignore: use_build_context_synchronously
+                      context: context,
+                      builder: (context) {
+                        return AlertDialog(
+                          title: const Text("Exit"),
+                          content: const Text("Are you sure to exit?"),
+                          actions: [
+                            TextButton(
+                              child: const Text("No"),
+                              onPressed: () => Navigator.pop(context),
+                            ),
+                            TextButton(
+                                child: const Text("Yes"),
+                                onPressed: () async {
+                                  await webCtr.clearCache();
+                                  await WebViewCookieManager().clearCookies();
+                                  await stopKioskMode();
+                                  Navigator.pop(context);
+                                })
+                          ],
+                        );
+                      });
                 }
               });
         });
