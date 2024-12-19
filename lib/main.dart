@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 
@@ -10,7 +12,7 @@ import 'package:flutter_windowmanager/flutter_windowmanager.dart';
 
 void main() {
   runApp(MaterialApp(
-    title: "Web App",
+    title: "SMAN 1 Gubug CBT App",
     theme: ThemeData(primarySwatch: Colors.lightGreen),
     home: const HomePageWeb(),
   ));
@@ -52,29 +54,23 @@ class _HomePageWebState extends State<HomePageWeb> {
             dragGesturePullToRefresh.finished();
           },
           onHttpError: (HttpResponseError error) {
-            // final errCode = error.response?.statusCode;
-            // if (errCode == 404) webCtr.loadFlutterAsset("assets/404.html");
-            // ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            //     content: Text(
-            //         "HTTP error with code $errCode. Ignore this message if page works normally."),
-            //     duration: const Duration(seconds: 15),
-            //     action: SnackBarAction(
-            //       label: 'Dismiss',
-            //       onPressed: () =>
-            //           ScaffoldMessenger.of(context).hideCurrentSnackBar(),
-            //     )));
+            //
           },
           onWebResourceError: (WebResourceError error) {
-            // webCtr.loadFlutterAsset("assets/404.html");
-            // ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            //  content: Text(error.description),
-            //  duration: const Duration(seconds: 15),
-            //  action: SnackBarAction(
-            //    label: "Dismiss",
-            //    onPressed: () =>
-            //        ScaffoldMessenger.of(context).hideCurrentSnackBar(),
-            //  ),
-            //));
+            if (error.description == "net::ERR_INTERNET_DISCONNECTED" ||
+                error.description == "net::ERR_ADDRESS_UNREACHABLE" ||
+                error.description == "net::ERR_CONNECTION_ABORTED") {
+              webCtr.loadFlutterAsset("assets/404.html");
+            }
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text(error.description),
+              duration: const Duration(seconds: 6),
+              action: SnackBarAction(
+                label: "Dismiss",
+                onPressed: () =>
+                    ScaffoldMessenger.of(context).hideCurrentSnackBar(),
+              ),
+            ));
             dragGesturePullToRefresh.finished();
           },
           onNavigationRequest: (NavigationRequest request) {
@@ -87,8 +83,6 @@ class _HomePageWebState extends State<HomePageWeb> {
       )
       ..clearCache()
       ..loadRequest(Uri.parse(openPage));
-    startKioskMode();
-    FlutterWindowManager.addFlags(FlutterWindowManager.FLAG_SECURE);
     dragGesturePullToRefresh
         .setController(webCtr)
         .setDragHeightEnd(200)
@@ -106,18 +100,23 @@ class _HomePageWebState extends State<HomePageWeb> {
             webCtr.clearCache();
             WebViewCookieManager().clearCookies();
             return Scaffold(
+              appBar: AppBar(title: const Text("SMAN 1 Gubug CBT App")),
               body: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Text(
-                        "Kiosk Mode disabled. Start again the Kiosk Mode to open."),
-                    const SizedBox(height: 10,),
+                        "Untuk membuka halaman, mohon untuk memasang pin pada aplikasi."),
+                    const SizedBox(height: 5),
+                    const Text("Atau, buka Kiosk Mode melalui tombol dibawah ini 👇."),
+                    const SizedBox(height: 10),
                     ElevatedButton(
                         onPressed: () {
                           startKioskMode();
+                          FlutterWindowManager.addFlags(
+                              FlutterWindowManager.FLAG_SECURE);
                         },
-                        child: const Text("Start Kiosk Mode"))
+                        child: const Text("Masuki Kiosk Mode"))
                   ],
                 ),
               ),
@@ -126,58 +125,7 @@ class _HomePageWebState extends State<HomePageWeb> {
           return PopScope(
               canPop: false,
               child: Scaffold(
-                appBar: AppBar(
-                  leading: IconButton(
-                      icon: const Icon(Icons.clear),
-                      onPressed: () async {
-                        await showDialog(
-                            context: context,
-                            builder: (builder) {
-                              return AlertDialog(
-                                title: const Text("Exit"),
-                                content: const Text("Are you sure to exit?"),
-                                actions: [
-                                  TextButton(
-                                    child: const Text("No"),
-                                    onPressed: () => Navigator.pop(context),
-                                  ),
-                                  TextButton(
-                                      child: const Text("Yes"),
-                                      onPressed: () async {
-                                        await webCtr.clearCache();
-                                        await WebViewCookieManager()
-                                            .clearCookies();
-                                        await stopKioskMode();
-                                        Navigator.pop(context);
-                                      })
-                                ],
-                              );
-                            });
-                      }),
-                  // actions: [
-                  //   IconButton(
-                  //       icon: const Icon(Icons.arrow_back),
-                  //       onPressed: () async {
-                  //         if (await webCtr.canGoBack()) {
-                  //           await webCtr.goBack();
-                  //         }
-                  //       }),
-                  //   IconButton(
-                  //       icon: const Icon(Icons.refresh),
-                  //       onPressed: () async {
-                  //         await webCtr.currentUrl() == openPage
-                  //             ? await webCtr.reload()
-                  //             : await webCtr.loadRequest(Uri.parse(openPage));
-                  //       }),
-                  //   IconButton(
-                  //       icon: const Icon(Icons.arrow_forward),
-                  //       onPressed: () async {
-                  //         if (await webCtr.canGoForward()) {
-                  //           await webCtr.goForward();
-                  //         }
-                  //       })
-                  // ],
-                ),
+                appBar: AppBar(title: const Text("SMAN 1 Gubug CBT App")),
                 body: Column(children: [
                   LinearProgressIndicator(
                     value: progress,
@@ -205,7 +153,6 @@ class _HomePageWebState extends State<HomePageWeb> {
                   await webCtr.goBack();
                 } else {
                   showDialog(
-                      // ignore: use_build_context_synchronously
                       context: context,
                       builder: (context) {
                         return AlertDialog(
@@ -222,6 +169,8 @@ class _HomePageWebState extends State<HomePageWeb> {
                                   await webCtr.clearCache();
                                   await WebViewCookieManager().clearCookies();
                                   await stopKioskMode();
+                                  FlutterWindowManager.clearFlags(
+                                      FlutterWindowManager.FLAG_SECURE);
                                   Navigator.pop(context);
                                 })
                           ],
