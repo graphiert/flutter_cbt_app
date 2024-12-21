@@ -85,7 +85,7 @@ class _HomePageWebState extends State<HomePageWeb> {
       ..loadRequest(Uri.parse(openPage));
     dragGesturePullToRefresh
         .setController(webCtr)
-        .setDragHeightEnd(200)
+        .setDragHeightEnd(600)
         .setDragStartYDiff(10)
         .setWaitToRestart(3000);
   }
