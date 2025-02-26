@@ -59,7 +59,8 @@ class _HomePageWebState extends State<HomePageWeb> {
           onWebResourceError: (WebResourceError error) {
             if (error.description == "net::ERR_INTERNET_DISCONNECTED" ||
                 error.description == "net::ERR_ADDRESS_UNREACHABLE" ||
-                error.description == "net::ERR_CONNECTION_ABORTED") {
+                error.description == "net::ERR_CONNECTION_ABORTED" ||
+                error.description == "net::ERR_CONNECTION_RESET") {
               webCtr.loadFlutterAsset("assets/404.html");
             }
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(
